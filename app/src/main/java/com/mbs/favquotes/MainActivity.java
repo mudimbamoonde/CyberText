@@ -16,16 +16,19 @@ import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.android.volley.AuthFailureError;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.google.gson.JsonParser;
@@ -33,19 +36,27 @@ import com.google.gson.JsonParser;
 
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.json.JSONObject;
 
+import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
-    RecyclerView recyclerView;
-    RecyclerAdapter adapter;
-    TextView textView,message;
-    ArrayList<Quotes> modelList,models;
+    public static RecyclerView recyclerView;
+    public static RecyclerAdapter adapter;
+    public static TextView textView,message;
+    public static ArrayList<Quotes> modelList,models;
     @Override
     protected void onCreate(Bundle save) {
         super.onCreate(save);
@@ -55,11 +66,14 @@ public class MainActivity extends AppCompatActivity {
 //        textView = findViewById(R.id.textView);
         message = findViewById(R.id.message);
         models = new ArrayList<>();
+        jx();
 //        GetRequest();
+//        fetch pr = new fetch();
+//        pr.execute();
         ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.READ_PHONE_STATE},1);
-        recyclerView.setLayoutManager(new LinearLayoutManager(MainActivity.this));
-        adapter = new RecyclerAdapter(MainActivity.this,getModel());
-        recyclerView.setAdapter(adapter);
+//        recyclerView.setLayoutManager(new LinearLayoutManager(MainActivity.this));
+//        adapter = new RecyclerAdapter(MainActivity.this,getModel());
+//        recyclerView.setAdapter(adapter);
         LocalBroadcastManager.getInstance(this).registerReceiver(onNotice, new IntentFilter("Msg"));
 
     }
@@ -75,12 +89,14 @@ public class MainActivity extends AppCompatActivity {
             case 1: {
 
                 // If request is cancelled, the result arrays are empty.
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    Intent intent = new Intent(
-                            "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS");
-                    startActivity(intent);
-                    Toast.makeText(MainActivity.this, "Enable FavQuote Notification Access to allow You receive Quotes! ", Toast.LENGTH_SHORT).show();
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+//                    if(grantResults.length > 1 ){
+                        Intent intent = new Intent(
+                                "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS");
+                        startActivity(intent);
+                        Toast.makeText(MainActivity.this, "Enable FavQuote Notification Access to allow You receive Quotes! ", Toast.LENGTH_SHORT).show();
+//                    }
+
                     // permission was granted, yay! Do the
                     // contacts-related task you need to do.
                 } else {
@@ -111,23 +127,23 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public ArrayList<Quotes> getModel(){
-        JsonParser j = new JsonParser();
-        try {
-            FileReader file = new FileReader("assets/data.json");
-            Object obj = j.parse(file);
-
-            JSONArray quotes = (JSONArray) obj;
-            for (int i=0; i< quotes.length(); i ++){
-                Quotes quo = new Quotes();
-                quo.setDescription((String) quotes.get(i));
-                models.add(quo);
-            }
-
-        }catch (FileNotFoundException | JSONException e){
-            e.printStackTrace();
-        }
-        return models;
+//    public ArrayList<Quotes> getModel(){
+//        JsonParser j = new JsonParser();
+//        try {
+//            FileReader file = new FileReader("assets/data.json");
+//            Object obj = j.parse(file);
+//
+//            JSONArray quotes = (JSONArray) obj;
+//            for (int i=0; i< quotes.length(); i ++){
+//                Quotes quo = new Quotes();
+//                quo.setDescription((String) quotes.get(i));
+//                models.add(quo);
+//            }
+//
+//        }catch (FileNotFoundException | JSONException e){
+//            e.printStackTrace();
+//        }
+//        return models;
 //        Quotes quotes1 = new Quotes();
 //        Quotes quotes2 = new Quotes();
 //        Quotes quotes3 = new Quotes();
@@ -146,64 +162,92 @@ public class MainActivity extends AppCompatActivity {
 //        models.add(quotes4);
 //        models.add(quotes5);
 //        return quo;
-    }
-
-//    private void GetRequest() {
-//        RequestQueue requestQueue= Volley.newRequestQueue(MainActivity.this);
-//        String url="https://favquoteshack.herokuapp.com/api/quotes";
-////        String url="https://favquoteshack.herokuapp.com/mobile/text";
-//
-//        JsonObjectRequest request=new JsonObjectRequest(Request.Method.GET, url,null, new Response.Listener<JSONObject>() {
-//            @SuppressLint("SetTextI18n")
-//            @Override
-//            public void onResponse(JSONObject response) {
-//                try {
-//                    JSONArray jsonArray = response.getJSONArray("content");
-//                    Toast.makeText(MainActivity.this,response.toString(),Toast.LENGTH_LONG).show();
-//                    for (int i = 0; i < jsonArray.length(); i++) {
-//                        JSONObject content = jsonArray.getJSONObject(i);
-//                        String contentString = content.getString("author");
-//                        String date_created = content.getString("text");
-//
-//                        Quotes quotes = new Quotes();
-//                        quotes.setDescription(contentString);
-//                        models.add(quotes);
-//                    }
-//
-//                } catch (Exception e) {
-//                    e.printStackTrace();
-//                }
-//
-//                recyclerView.setLayoutManager(new LinearLayoutManager(MainActivity.this));
-//                adapter = new RecyclerAdapter(MainActivity.this,models);
-//                recyclerView.setAdapter(adapter);
-//            }
-//        }, new Response.ErrorListener() {
-//            @Override
-//            public void onErrorResponse(VolleyError error) {
-////                Toast.makeText(MainActivity.this,"Fetch Data : Response Failed"+
-////                        error.toString(),Toast.LENGTH_LONG).show();
-//            }
-//        }){
-////            @Override
-////            protected Map<String,String> getParams(){
-////                Map<String,String> params=new HashMap<>();
-////                params.put("content","");
-////                return params;
-////            }
-//
-////
-////            @Override
-////            public Map<String,String> getHeaders() throws AuthFailureError {
-////                Map<String,String> params=new HashMap<String, String>();
-////                params.put("Content-Type","application/x-www-form-urlencoded");
-////                return params;
-////            }
-//        };
-//
-//        requestQueue.add(request);
-//
 //    }
+
+    private void jx(){
+        String json;
+        try {
+            InputStream is = getAssets().open("quotes.json");
+            int size = is.available();
+            byte [] buffer = new byte[size];
+            is.read(buffer);
+            is.close();
+
+            json = new String(buffer,"UTF-8");
+            JSONArray jsonArray  = new JSONArray((json));
+
+            for (int i=0; i<jsonArray.length(); i++){
+                JSONObject obj  = jsonArray.getJSONObject(i);
+
+                Quotes quotes = new Quotes();
+                quotes.setDescription(obj.getString("text"));
+                models.add(quotes);
+                recyclerView.setLayoutManager(new LinearLayoutManager(MainActivity.this));
+                adapter = new RecyclerAdapter(MainActivity.this,models);
+                recyclerView.setAdapter(adapter);
+            }
+
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+    private void GetRequest() {
+        RequestQueue requestQueue= Volley.newRequestQueue(MainActivity.this);
+//        String url="https://favquoteshack.herokuapp.com/api/quotes";
+        String url="https://favquoteshack.herokuapp.com/mobile/text";
+
+        JsonObjectRequest request=new JsonObjectRequest(Request.Method.GET, url,null, new Response.Listener<JSONObject>() {
+            @SuppressLint("SetTextI18n")
+            @Override
+            public void onResponse(JSONObject response) {
+                try {
+                    JSONArray jsonArray = response.getJSONArray("");
+                    Toast.makeText(MainActivity.this,response.toString(),Toast.LENGTH_LONG).show();
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        JSONObject content = jsonArray.getJSONObject(i);
+                        String contentString = content.getString("author");
+                        String date_created = content.getString("text");
+
+                        Quotes quotes = new Quotes();
+                        quotes.setDescription(contentString);
+                        models.add(quotes);
+                    }
+
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+
+                recyclerView.setLayoutManager(new LinearLayoutManager(MainActivity.this));
+                adapter = new RecyclerAdapter(MainActivity.this,models);
+                recyclerView.setAdapter(adapter);
+            }
+        }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+//                Toast.makeText(MainActivity.this,"Fetch Data : Response Failed"+
+//                        error.toString(),Toast.LENGTH_LONG).show();
+            }
+        }){
+//            @Override
+//            protected Map<String,String> getParams(){
+//                Map<String,String> params=new HashMap<>();
+//                params.put("content","");
+//                return params;
+//            }
+
+//
+//            @Override
+//            public Map<String,String> getHeaders() throws AuthFailureError {
+//                Map<String,String> params=new HashMap<String, String>();
+//                params.put("Content-Type","application/x-www-form-urlencoded");
+//                return params;
+//            }
+        };
+
+        requestQueue.add(request);
+
+    }
 
     private void postRequest(final String content) {
         RequestQueue requestQueue= Volley.newRequestQueue(MainActivity.this);
@@ -288,3 +332,52 @@ public class MainActivity extends AppCompatActivity {
 
 
 }
+
+// class fetch extends AsyncTask<Void,Void,Void> {
+//    String data = "";
+//    String goten = "";
+//    String gotenSingle = "";
+//    @SuppressLint("StaticFieldLeak")
+//    Context cx;
+//    @Override
+//    protected Void doInBackground(Void... voids) {
+//        String urlx="https://favquoteshack.herokuapp.com/api/quotes";
+//        try {
+//            URL url = new URL(urlx);
+//            HttpURLConnection httpURLConnection = (HttpURLConnection) url.openConnection();
+//
+//            InputStream inputStream = httpURLConnection.getInputStream();
+//            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
+//
+//            String line= "";
+//            while(line != null){
+//                line = bufferedReader.readLine();
+//                data = data + line;
+//            }
+//            JSONArray jp = new JSONArray(data);
+//            for (int i=0; i< jp.length(); i++){
+//                JSONObject jo = (JSONObject) jp.get(i);
+//                gotenSingle = (String) jo.get("text");
+//                goten = goten + gotenSingle;
+//            }
+//
+//
+//        } catch (IOException | JSONException e) {
+//            e.printStackTrace();
+//        }
+//        return null;
+//    }
+//
+//    @Override
+//    protected void onPostExecute(Void aVoid) {
+//        super.onPostExecute(aVoid);
+//        Quotes quotes = new Quotes();
+//        quotes.setDescription(goten);
+//        MainActivity.models.add(quotes);
+//
+//        MainActivity.recyclerView.setLayoutManager(new LinearLayoutManager(cx));
+//        MainActivity.adapter = new RecyclerAdapter(cx,MainActivity.models);
+//        MainActivity.recyclerView.setAdapter(MainActivity.adapter);
+//
+//    }
+//}
